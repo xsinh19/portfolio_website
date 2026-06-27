@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attention Is All You Need — Notes from a Slow Read · Shivrajsinh Bhosale</title>
+  <meta name="description" content="Walking through the 2017 Transformer paper — what it actually says, why it worked, and what surprised me on a careful re-read in 2026.">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Attention Is All You Need — Notes from a Slow Read">
+  <meta property="og:description" content="What the 2017 Transformer paper actually says, why it worked, and what surprised me on a careful re-read.">
+  <meta property="og:url" content="https://shivrajbhosale.com/blog/attention-is-all-you-need.html">
+  <meta property="og:image" content="https://avatars.githubusercontent.com/u/142411804?v=4">
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237f77dd'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' fill='white' font-family='monospace' font-size='52' font-weight='600'%3ES%3C/text%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/ai-theme.css">
+
+  <style>
+    .post {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 140px 24px 80px;
+    }
+    .post .crumb {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+      margin-bottom: 24px;
+    }
+    .post .crumb a { color: var(--accent); }
+    .post .post-meta {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+    .post h1.post-title {
+      font-family: var(--sans);
+      font-size: clamp(30px, 5vw, 46px);
+      font-weight: 500;
+      color: var(--text-0);
+      line-height: 1.15;
+      margin: 0 0 30px;
+      letter-spacing: -0.5px;
+    }
+    .post .tags { display: flex; gap: 8px; margin-bottom: 40px; flex-wrap: wrap; }
+    .post .tags .tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      background: rgba(127,119,221,0.06);
+    }
+    .post .tldr {
+      background: var(--glass);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 18px 22px;
+      font-size: 15px;
+      color: var(--text-1);
+      margin: 0 0 40px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .post .tldr strong { color: var(--accent); font-weight: 500; }
+    .post hr {
+      border: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--glass-border-strong), transparent);
+      margin: 40px 0;
+    }
+    .post h2 {
+      font-family: var(--sans);
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--text-0);
+      margin: 56px 0 18px;
+      letter-spacing: -0.3px;
+    }
+    .post h2::before {
+      content: '§ ';
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+    .post p {
+      font-size: 16px;
+      line-height: 1.78;
+      color: var(--text-1);
+      margin: 0 0 22px;
+    }
+    .post p strong { color: var(--text-0); font-weight: 500; }
+    .post blockquote {
+      margin: 26px 0;
+      padding: 16px 22px;
+      border-left: 3px solid var(--accent-2);
+      background: rgba(93,202,165,0.05);
+      border-radius: 0 8px 8px 0;
+      color: var(--text-0);
+      font-style: italic;
+    }
+    .post blockquote p:last-child { margin-bottom: 0; }
+    .post code {
+      font-family: var(--mono);
+      font-size: 13.5px;
+      background: rgba(127,119,221,0.10);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .post pre {
+      background: #0a0a13;
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      overflow-x: auto;
+      margin: 26px 0;
+    }
+    .post pre code {
+      background: none;
+      color: var(--text-0);
+      padding: 0;
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+    .post ol, .post ul {
+      color: var(--text-1);
+      line-height: 1.78;
+      padding-left: 22px;
+      margin: 0 0 22px;
+    }
+    .post ol li, .post ul li { margin-bottom: 8px; font-size: 16px; }
+    .post ol li strong, .post ul li strong { color: var(--text-0); font-weight: 500; }
+
+    .post table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 26px 0;
+      font-family: var(--mono);
+      font-size: 13px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .post table th {
+      text-align: left;
+      padding: 12px 16px;
+      background: rgba(127,119,221,0.10);
+      color: var(--accent);
+      font-weight: 500;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .post table td {
+      padding: 11px 16px;
+      color: var(--text-1);
+      border-bottom: 1px solid rgba(127,119,221,0.08);
+    }
+    .post table tr:last-child td { border-bottom: 0; }
+
+    .post .footnote-back {
+      margin-top: 56px;
+      padding-top: 24px;
+      border-top: 1px solid var(--glass-border);
+      text-align: center;
+    }
+    .post .footnote-back a {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="neural-bg" aria-hidden="true"></canvas>
+
+  <nav class="ai-nav">
+    <div class="container">
+      <a href="../index.html" class="brand"><span class="prompt">$</span>shivraj<span class="cursor"></span></a>
+      <ul>
+        <li><a href="../index.html#home">home</a></li>
+        <li><a href="../index.html#about">about</a></li>
+        <li><a href="../index.html#projects">projects</a></li>
+        <li><a href="../index.html#blog" class="active">blog</a></li>
+        <li><a href="../index.html#contact">contact</a></li>
+      </ul>
+      <button class="menu-btn" aria-label="Toggle menu">menu</button>
+    </div>
+  </nav>
+
+  <article class="post">
+    <div class="crumb"><a href="../index.html#blog">← back to blog</a></div>
+    <div class="post-meta">JUN 25, 2026 · 12 MIN READ · PAPER NOTES</div>
+    <h1 class="post-title">Attention Is All You Need — Notes from a Slow Read</h1>
+    <div class="tags">
+      <span class="tag">#deep-learning</span>
+      <span class="tag">#transformers</span>
+      <span class="tag">#nlp</span>
+      <span class="tag">#paper-notes</span>
+    </div>
+
+    <blockquote class="tldr">
+      <strong>TL;DR</strong> — In 2017, a Google Brain team replaced the recurrent backbone of sequence models with pure attention. The result — the Transformer — trained faster, learned longer dependencies, and quietly became the substrate for almost every interesting model that followed: BERT, GPT, ViT, AlphaFold's Evoformer. This post walks through what the paper actually says, why it worked, and what surprised me on a careful read.
+    </blockquote>
+
+    <hr>
+
+    <h2>The problem in 2017</h2>
+    <p>If you wanted to model a sequence in 2016, you reached for an RNN. LSTMs and GRUs had patched the worst of the vanishing-gradient problem, and Bahdanau-style attention had partly fixed the bottleneck where an entire source sentence got compressed into a single thought vector. But two stubborn issues remained.</p>
+
+    <p>The first was <strong>sequential computation</strong>. RNNs process tokens one at a time, because the hidden state at position <em>t</em> depends on the hidden state at <em>t-1</em>. You cannot use the GPU you paid for. Training was slow, and it got slower the longer your sequences became.</p>
+
+    <p>The second was <strong>path length for long-range dependencies</strong>. For an RNN, the signal from token 1 has to travel through every intervening hidden state to reach token 100. Each hop is a chance for the gradient to die or the information to get overwritten. Attention helped, but attention was still bolted on top of recurrence — the recurrence itself was load-bearing.</p>
+
+    <p>ConvS2S (Facebook, 2017) showed you could swap recurrence for convolutions and get parallelism. But convolutional receptive fields grow only with depth, so the path length between distant tokens still scales with the network depth. The recurrence was gone; the fundamental issue was not.</p>
+
+    <p>Then came a paper with a title that read like a manifesto: <em>Attention Is All You Need</em>.</p>
+
+    <h2>The central claim</h2>
+    <p>The paper's argument is almost cheeky in how directly it states things. You do not need recurrence. You do not need convolutions. Self-attention, stacked deep enough, with a few engineering touches, is sufficient — and it is also dramatically more parallel and has constant path length between any two positions.</p>
+
+    <p>Read Table 1 of the paper, and the argument becomes mechanical. For a sequence of length <em>n</em> and representation dimension <em>d</em>:</p>
+
+    <table>
+      <thead>
+        <tr><th>Layer type</th><th>Complexity / layer</th><th>Sequential ops</th><th>Max path length</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Self-attention</td><td>O(n² · d)</td><td>O(1)</td><td>O(1)</td></tr>
+        <tr><td>Recurrent (RNN)</td><td>O(n · d²)</td><td>O(n)</td><td>O(n)</td></tr>
+        <tr><td>Convolutional</td><td>O(k · n · d²)</td><td>O(1)</td><td>O(log_k n)</td></tr>
+      </tbody>
+    </table>
+
+    <p>Self-attention is more expensive per layer when <em>n &gt; d</em>, but it is <strong>fully parallel</strong> and any token can attend to any other token in one hop. For typical sentence-length sequences and the <em>d</em> the paper uses, the tradeoff is wildly favourable.</p>
+
+    <h2>The core idea: scaled dot-product attention</h2>
+    <p>Forget the architecture diagram for a moment. The single idea that makes the Transformer work is this:</p>
+
+    <blockquote>For each position, produce a <em>query</em>. For every position (including the same one), produce a <em>key</em> and a <em>value</em>. The output at the query position is a weighted sum of values, where the weight on each value is the similarity between the query and that position's key.</blockquote>
+
+    <p>In math, with <code>Q</code>, <code>K</code>, <code>V</code> as matrices stacking queries, keys, and values across all positions:</p>
+
+<pre><code>Attention(Q, K, V) = softmax(Q Kᵀ / √dₖ) V</code></pre>
+
+    <p>A few things to notice:</p>
+    <ol>
+      <li><strong>The dot product <code>Q Kᵀ</code> is the similarity matrix.</strong> Row <em>i</em>, column <em>j</em> is how much position <em>i</em> wants to listen to position <em>j</em>.</li>
+      <li><strong>The softmax turns similarities into a distribution.</strong> Every row sums to one, so the output at each position is a convex combination of the value vectors.</li>
+      <li><strong>The <code>√dₖ</code> scaling is not cosmetic.</strong> In high dimensions, random dot products have large variance. Without the scaling, the softmax saturates — one value gets ~1 and the rest get ~0, and the gradient through softmax vanishes. Divide by <code>√dₖ</code> and you keep the pre-softmax logits in a sane range.</li>
+    </ol>
+    <p>That is the whole mechanism. Everything else in the paper is plumbing around this idea.</p>
+
+    <h2>Multi-head attention</h2>
+    <p>One attention computation gives you a single "lens" — one way of relating positions to each other. But a sentence has many simultaneous relationships: syntactic ("who is the subject of this verb"), referential ("which noun does this pronoun point to"), positional ("what is the previous word"), semantic ("what is the topic"). One soft alignment cannot capture all of these.</p>
+
+    <p>Multi-head attention runs <code>h</code> parallel attention operations on different learned projections of <code>Q</code>, <code>K</code>, <code>V</code>, then concatenates the outputs and projects them back to the model dimension. The paper uses <code>h = 8</code>. Each head can specialise. When you visualise the attention matrices of a trained Transformer, you actually see different heads doing different things — one head attends to the previous token, another to syntactically related words, another to the start-of-sequence token (a useful "null" pointer).</p>
+
+    <h2>The architecture, briefly</h2>
+    <p>The full Transformer is an encoder-decoder. The encoder is a stack of <code>N=6</code> identical layers, each containing one multi-head self-attention sublayer followed by a position-wise feed-forward sublayer, with residual connections and layer normalisation around each.</p>
+
+    <p>The decoder mirrors the encoder, but with two changes:</p>
+    <ul>
+      <li>The self-attention is <strong>masked</strong>. When predicting token <em>t</em>, the decoder must not see tokens <em>t+1, t+2, …</em> — that would be cheating. The mask sets the relevant entries in the pre-softmax similarity matrix to <code>-∞</code>, so the softmax assigns them zero weight.</li>
+      <li>Each decoder layer has an extra <strong>cross-attention</strong> sublayer between self-attention and the feed-forward. Here the queries come from the decoder, but the keys and values come from the <em>encoder's</em> output. This is how the decoder reads the source sentence.</li>
+    </ul>
+
+    <p>Two more details that are easy to gloss over:</p>
+    <ul>
+      <li><strong>Positional encodings:</strong> self-attention is permutation-invariant by construction — it does not know the order of the tokens. The paper adds sinusoidal positional encodings to the input embeddings, of the form <code>sin(pos / 10000^(2i/d))</code> and <code>cos(...)</code>. The frequencies form a geometric progression, so any positional offset can be expressed as a linear function of the encoding at the original position. The paper notes this should help the model generalise to sequence lengths it did not see during training.</li>
+      <li><strong>Position-wise FFN:</strong> between attention sublayers, each position passes independently through a two-layer MLP with ReLU. The hidden size is 4× the model size (<code>d_ff = 2048</code> vs <code>d_model = 512</code>). This is where most of the parameters live, and it is also where the model does most of its "thinking" per position once attention has gathered the relevant context.</li>
+    </ul>
+
+    <h2>Why it won</h2>
+    <p>The empirical results are almost a footnote — but they are striking. On WMT14 English-to-German, the Transformer beats every prior result on BLEU, <strong>at a fraction of the training cost</strong>. On English-to-French it sets a new state of the art. The "base" model trains in 12 hours on 8 GPUs.</p>
+
+    <p>But the long-run story is not BLEU on WMT. The long-run story is that this architecture turned out to be a <em>substrate</em>. The same encoder, slightly modified, became BERT. The same decoder, slightly modified, became GPT. Strip the encoder-decoder distinction and feed in image patches instead of tokens, and you get a Vision Transformer. The Transformer is general in a way that RNNs and CNNs are not, and once people realised that, the rest was scaling.</p>
+
+    <h2>What surprised me on a careful read</h2>
+    <ul>
+      <li><strong>How small the original Transformer is by 2026 standards.</strong> Base model: 65M parameters. Big model: 213M. By contemporary standards these are tiny. The architecture clearly had headroom no one in 2017 fully appreciated.</li>
+      <li><strong>How much of the paper is engineering, not theory.</strong> Label smoothing, warmup learning-rate schedule, dropout placement, weight tying between the embedding and the pre-softmax linear. None of these are the "headline" idea, but the model probably does not train without them.</li>
+      <li><strong>The bet on parallelism.</strong> The authors are very explicit that they are trading per-layer FLOPs for parallel hardware utilisation. In 2017 this was a wager. In 2026 it looks like prophecy.</li>
+    </ul>
+
+    <h2>What I want to dig into next</h2>
+    <ul>
+      <li><strong>Efficient attention variants.</strong> <code>O(n²)</code> is fine for sentences and brutal for documents. FlashAttention (a memory-aware exact attention), Linformer, Performer, Longformer — all attempts to push beyond the quadratic wall.</li>
+      <li><strong>Positional encoding alternatives.</strong> RoPE (rotary positional embeddings) and ALiBi have largely replaced sinusoidal encodings in modern LLMs. Worth understanding why.</li>
+      <li><strong>Implementing self-attention from scratch.</strong> Karpathy's <em>nanoGPT</em> is the canonical starting point, and there is no substitute for writing the einsums yourself.</li>
+    </ul>
+
+    <h2>References</h2>
+    <ul>
+      <li>Vaswani et al., <em>Attention Is All You Need</em>, NeurIPS 2017. <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">arxiv.org/abs/1706.03762</a></li>
+      <li>Bahdanau et al., <em>Neural Machine Translation by Jointly Learning to Align and Translate</em>, ICLR 2015. <a href="https://arxiv.org/abs/1409.0473" target="_blank" rel="noopener">arxiv.org/abs/1409.0473</a></li>
+      <li>Jay Alammar, <em>The Illustrated Transformer</em>. <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">jalammar.github.io/illustrated-transformer</a></li>
+      <li>Andrej Karpathy, <em>nanoGPT</em>. <a href="https://github.com/karpathy/nanoGPT" target="_blank" rel="noopener">github.com/karpathy/nanoGPT</a></li>
+    </ul>
+
+    <div class="footnote-back">
+      <a href="../index.html#blog">← back to all posts</a>
+    </div>
+  </article>
+
+  <footer class="ai-footer">
+    <div class="container">
+      <div class="socials">
+        <a href="https://github.com/xsinh19" target="_blank" rel="noopener" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+        <a href="https://www.linkedin.com/in/shivrajsinh-bhosale-a50174256/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+        <a href="mailto:shivrajsinh.bhosale@iitgn.ac.in" aria-label="Email"><i class="fa-solid fa-envelope"></i></a>
+      </div>
+      <p class="small">© <span data-year>2026</span> Shivrajsinh Bhosale</p>
+    </div>
+  </footer>
+
+  <script src="../js/neural-bg.js"></script>
+  <script src="../js/portfolio.js"></script>
+</body>
+</html>

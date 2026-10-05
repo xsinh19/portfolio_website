@@ -6,10 +6,10 @@
   const typeEl = document.querySelector('.type-out');
   if (typeEl) {
     const phrases = [
-      'AI Engineer · Quant Researcher',
-      'Building at the ML × finance edge',
+      'Software Engineer',
+      'Backend · RAG · Real-time systems',
       'IIT Gandhinagar · Class of 2027',
-      'SEBI Certified NISM Research Analyst'
+      'Ex-ASCENT Intern @ Axis Bank'
     ];
     let pi = 0, ci = 0, deleting = false;
     function tick() {
